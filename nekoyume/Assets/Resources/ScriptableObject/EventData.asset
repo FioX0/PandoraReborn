@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eca135eb4a2a4605942fbf0e09d9886e, type: 3}
+  m_Name: EventData
+  m_EditorClassIdentifier: 
+  type: 2
+  enums:
+  - Default
+  - Christmas
+  - Valentine
+  - EventSummer
+  - EventWinter
+  defaultSettings:
+    <EventType>k__BackingField: 0
+    <Intro>k__BackingField: {fileID: 21300000, guid: 46a8a229bbe9b432d99a82b73c5c9c27,
+      type: 3}
+    <StageIcon>k__BackingField: {fileID: 21300000, guid: 393ebe8864bbd4f04982ced1bf53943e,
+      type: 3}
+    <StageIconOffset>k__BackingField: {x: 0, y: 0}
+    <MainBGM>k__BackingField: {fileID: 8300000, guid: 09471cca651f74acb8b5223ac301ef79,
+      type: 3}
+  timeBasedEvents:
+  - <EventType>k__BackingField: 1
+    <Intro>k__BackingField: {fileID: 21300000, guid: d66925166185a4c9499ebb9359b58649,
+      type: 3}
+    <StageIcon>k__BackingField: {fileID: 21300000, guid: a9ff32e70226c43dbbfcb26d6eae5228,
+      type: 3}
+    <StageIconOffset>k__BackingField: {x: 0, y: 7.5}
+    <MainBGM>k__BackingField: {fileID: 8300000, guid: 7093635f328f84c59af6f67a2e028a3e,
+      type: 3}
+    <BeginDateTime>k__BackingField: 01-04T09:50:00
+    <EndDateTime>k__BackingField: 01-05T09:51:00
+  - <EventType>k__BackingField: 2
+    <Intro>k__BackingField: {fileID: 21300000, guid: 6d32eb725ef59455da599ad4577932f6,
+      type: 3}
+    <StageIcon>k__BackingField: {fileID: 21300000, guid: 393ebe8864bbd4f04982ced1bf53943e,
+      type: 3}
+    <StageIconOffset>k__BackingField: {x: 0, y: 0}
+    <MainBGM>k__BackingField: {fileID: 8300000, guid: 09471cca651f74acb8b5223ac301ef79,
+      type: 3}
+    <BeginDateTime>k__BackingField: 02-11T15:00:00
+    <EndDateTime>k__BackingField: 02-20T14:59:00
+  blockIndexBasedEvents: []
+  eventDungeonIdBasedEvents:
+  - <EventType>k__BackingField: 3
+    <Intro>k__BackingField: {fileID: 21300000, guid: 46a8a229bbe9b432d99a82b73c5c9c27,
+      type: 3}
+    <StageIcon>k__BackingField: {fileID: 21300000, guid: 9280eabeaa0244db9aa93984db26a46e,
+      type: 3}
+    <StageIconOffset>k__BackingField: {x: 1, y: 7}
+    <MainBGM>k__BackingField: {fileID: 8300000, guid: f461d703e65c9ea4f85f37f198af9f5f,
+      type: 3}
+    <TargetDungeonIds>k__BackingField: 91bd9800a1e49800
+    <EventDungeonGuidedQuest>k__BackingField:
+      icon: {fileID: 21300000, guid: 9280eabeaa0244db9aa93984db26a46e, type: 3}
+      gradiantColor: {r: 1, g: 0.3254902, b: 0.5372549, a: 0.6784314}
+    <EventRecipeGuidedQuest>k__BackingField:
+      icon: {fileID: 21300000, guid: e5d53d7d2c57e411d9a7108c9723c6cf, type: 3}
+      gradiantColor: {r: 0.09019608, g: 1, b: 0.3529412, a: 0.2901961}
+  - <EventType>k__BackingField: 4
+    <Intro>k__BackingField: {fileID: 21300000, guid: d66925166185a4c9499ebb9359b58649,
+      type: 3}
+    <StageIcon>k__BackingField: {fileID: 21300000, guid: a9ff32e70226c43dbbfcb26d6eae5228,
+      type: 3}
+    <StageIconOffset>k__BackingField: {x: 0, y: 7.5}
+    <MainBGM>k__BackingField: {fileID: 8300000, guid: 7093635f328f84c59af6f67a2e028a3e,
+      type: 3}
+    <TargetDungeonIds>k__BackingField: b10b9900
+    <EventDungeonGuidedQuest>k__BackingField:
+      icon: {fileID: 21300000, guid: a9ff32e70226c43dbbfcb26d6eae5228, type: 3}
+      gradiantColor: {r: 0.48235294, g: 1, b: 0.3254902, a: 0.5294118}
+    <EventRecipeGuidedQuest>k__BackingField:
+      icon: {fileID: 21300000, guid: 5809096ebbef04aea8564d60ba43bb46, type: 3}
+      gradiantColor: {r: 1, g: 0.3647059, b: 0.3254902, a: 0.5294118}

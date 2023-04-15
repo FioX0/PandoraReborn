@@ -1,0 +1,352 @@
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Libplanet.Assets;
+using mixpanel;
+using Nekoyume.Action;
+using Nekoyume.Game.Controller;
+using Nekoyume.Helper;
+using Nekoyume.L10n;
+using Nekoyume.Model.Item;
+using Nekoyume.Model.Mail;
+using Nekoyume.PandoraBox;
+using Nekoyume.State;
+using Nekoyume.UI.Model;
+using Nekoyume.UI.Scroller;
+using UniRx;
+using UnityEngine;
+using UnityEngine.UI;
+using ShopItem = Nekoyume.UI.Model.ShopItem;
+
+namespace Nekoyume.UI
+{
+    public class ShopBuy : Widget
+    {
+        //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+        [Header("PANDORA CUSTOM FIELDS")] public Button RefreshButton;
+        public List<Toggle> EquipmentToggles;
+        public List<Toggle> MainToggles;
+
+        [Space(50)]
+        //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+        [SerializeField]
+        private Button sellButton;
+
+        [SerializeField] private Button closeButton;
+
+        public BuyView view;
+
+        private CancellationTokenSource _cancellationTokenSource = new();
+
+        private Shop SharedModel { get; set; }
+
+        protected override void Awake()
+        {
+            base.Awake();
+            SharedModel = new Shop();
+
+            sellButton.onClick.AddListener(() =>
+            {
+                Find<ItemCountAndPricePopup>().Close();
+                Find<ShopSell>().Show();
+                gameObject.SetActive(false);
+            });
+
+            closeButton.onClick.AddListener(() => Close());
+            CloseWidget = () =>
+            {
+                if (view.IsFocused)
+                {
+                    return;
+                }
+
+                Close();
+            };
+
+            view.SetAction(ShowBuyPopup);
+            //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+            RefreshButton.onClick.AddListener(() => { Refresh(); });
+            //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+        }
+
+        public override void Initialize()
+        {
+            base.Initialize();
+            SharedModel.ItemCountAndPricePopup.Value.Item.Subscribe(data =>
+            {
+                if (data is null)
+                {
+                    Find<ItemCountAndPricePopup>().Close();
+                    return;
+                }
+
+                Find<ItemCountAndPricePopup>().Pop(SharedModel.ItemCountAndPricePopup.Value);
+            }).AddTo(gameObject);
+        }
+
+        public override void Show(bool ignoreShowAnimation = false)
+        {
+            ShowAsync(ignoreShowAnimation);
+        }
+
+        private async void ShowAsync(bool ignoreShowAnimation = false)
+        {
+            Find<DataLoadingScreen>().Show();
+            Game.Game.instance.Stage.GetPlayer().gameObject.SetActive(false);
+
+            if (!Premium.PandoraProfile.IsPremium())
+            {
+                foreach (var item in EquipmentToggles)
+                    item.isOn = true;
+                foreach (var item in MainToggles)
+                    item.isOn = true;
+            }
+
+
+            var initWeaponTask = Task.Run(async () =>
+            {
+                var list = new List<ItemSubType>();
+                if (EquipmentToggles[0].isOn)
+                    list.Add(ItemSubType.Weapon);
+                //var list = new List<ItemSubType> { ItemSubType.Weapon, };
+                await ReactiveShopState.SetBuyDigestsAsync(list);
+                return true;
+            });
+
+            var initWeaponResult = await initWeaponTask;
+            if (initWeaponResult)
+            {
+                base.Show(ignoreShowAnimation);
+                view.Show(ReactiveShopState.BuyDigest, ShowItemTooltip);
+                Find<DataLoadingScreen>().Close();
+                HelpTooltip.HelpMe(100018, true);
+                AudioController.instance.PlayMusic(AudioController.MusicCode.Shop);
+            }
+
+            _cancellationTokenSource = new CancellationTokenSource();
+            var initOthersTask = Task.Run(async () =>
+            {
+                //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+                var list = new List<ItemSubType>();
+                if (EquipmentToggles[1].isOn)
+                    list.Add(ItemSubType.Armor);
+                if (EquipmentToggles[2].isOn)
+                    list.Add(ItemSubType.Belt);
+                if (EquipmentToggles[3].isOn)
+                    list.Add(ItemSubType.Necklace);
+                if (EquipmentToggles[4].isOn)
+                    list.Add(ItemSubType.Ring);
+
+                if (MainToggles[0].isOn)
+                    list.Add(ItemSubType.Food);
+
+                if (MainToggles[1].isOn)
+                    list.AddRange(new List<ItemSubType>
+                    {
+                        ItemSubType.Hourglass,
+                        ItemSubType.ApStone,
+                    });
+
+                if (MainToggles[2].isOn)
+                    list.AddRange(new List<ItemSubType>
+                    {
+                        ItemSubType.FullCostume,
+                        ItemSubType.HairCostume,
+                        ItemSubType.EarCostume,
+                        ItemSubType.EyeCostume,
+                        ItemSubType.TailCostume,
+                        ItemSubType.Title
+                    });
+
+                //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+                //var list = new List<ItemSubType>
+                //{
+                //    ItemSubType.Armor,
+                //    ItemSubType.Belt,
+                //    ItemSubType.Necklace,
+                //    ItemSubType.Ring,
+                //    ItemSubType.Food,
+                //    ItemSubType.FullCostume,
+                //    ItemSubType.HairCostume,
+                //    ItemSubType.EarCostume,
+                //    ItemSubType.EyeCostume,
+                //    ItemSubType.TailCostume,
+                //    ItemSubType.Title,
+                //    ItemSubType.Hourglass,
+                //    ItemSubType.ApStone,
+                //};
+                await ReactiveShopState.SetBuyDigestsAsync(list);
+                return true;
+            }, _cancellationTokenSource.Token);
+
+            if (initOthersTask.IsCanceled)
+            {
+                return;
+            }
+
+            var initOthersResult = await initOthersTask;
+            if (!initOthersResult)
+            {
+                return;
+            }
+
+            view.IsDoneLoadItem = true;
+            //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+            view.PriceToggle.isOn = false;
+            //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+        }
+
+        //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+        private void Refresh()
+        {
+            RefreshButton.interactable = false;
+            PandoraBox.Premium.SHOP_Refresh(ShowItemTooltip);
+        }
+        //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+
+        public void Open()
+        {
+            base.Show(true);
+            view.Show(ReactiveShopState.BuyDigest, ShowItemTooltip);
+        }
+
+        public override void Close(bool ignoreCloseAnimation = false)
+        {
+            if (view.IsCartEmpty)
+            {
+                OnClose();
+            }
+            else
+            {
+                Find<TwoButtonSystem>().Show(
+                    L10nManager.Localize("UI_CLOSE_BUY_WISH_LIST"),
+                    L10nManager.Localize("UI_YES"),
+                    L10nManager.Localize("UI_NO"),
+                    OnClose);
+            }
+        }
+
+        private void OnClose()
+        {
+            Find<ItemCountAndPricePopup>().Close();
+            Game.Event.OnRoomEnter.Invoke(true);
+            _cancellationTokenSource.Cancel();
+            base.Close(true);
+        }
+
+        public void Close(bool ignoreOnRoomEnter, bool ignoreCloseAnimation)
+        {
+            Find<ItemCountAndPricePopup>().Close(ignoreCloseAnimation);
+            if (!ignoreOnRoomEnter)
+            {
+                Game.Event.OnRoomEnter.Invoke(true);
+            }
+
+            base.Close(ignoreCloseAnimation);
+        }
+
+        private void ShowItemTooltip(ShopItem model)
+        {
+            var tooltip = ItemTooltip.Find(model.ItemBase.ItemType);
+            tooltip.Show(model,
+                () => ShowBuyPopup(new List<ShopItem> { model }),
+                view.ClearSelectedItems);
+        }
+
+        private void ShowBuyPopup(List<ShopItem> models)
+        {
+            if (!models.Any())
+            {
+                return;
+            }
+
+            var sumPrice =
+                new FungibleAssetValue(States.Instance.GoldBalanceState.Gold.Currency, 0, 0);
+            foreach (var model in models)
+            {
+                sumPrice += model.OrderDigest.Price;
+            }
+
+            if (States.Instance.GoldBalanceState.Gold < sumPrice)
+            {
+                OneLineSystem.Push(MailType.System,
+                    L10nManager.Localize("UI_NOT_ENOUGH_NCG"),
+                    NotificationCell.NotificationType.Information);
+                return;
+            }
+
+            var content = string.Format(L10nManager.Localize("UI_BUY_MULTIPLE_FORMAT"),
+                models.Count, sumPrice);
+            Find<TwoButtonSystem>().Show(
+                content,
+                L10nManager.Localize("UI_BUY"),
+                L10nManager.Localize("UI_CANCEL"),
+                (() => Buy(models)));
+        }
+
+        private async void Buy(List<ShopItem> models)
+        {
+            var purchaseInfos = new ConcurrentBag<PurchaseInfo>();
+            await foreach (var item in models.ToAsyncEnumerable())
+            {
+                var purchaseInfo = await GetPurchaseInfo(item.OrderDigest.OrderId);
+                purchaseInfos.Add(purchaseInfo);
+            }
+
+            Game.Game.instance.ActionManager.Buy(purchaseInfos.ToList()).Subscribe();
+
+            if (models.Count > 0)
+            {
+                var props = new Dictionary<string, Value>()
+                {
+                    ["Count"] = models.Count,
+                    ["AvatarAddress"] = States.Instance.CurrentAvatarState.address.ToString(),
+                    ["AgentAddress"] = States.Instance.CurrentAvatarState.agentAddress.ToString(),
+                };
+                Analyzer.Instance.Track("Unity/Number of Purchased Items", props);
+            }
+
+            foreach (var model in models)
+            {
+                var props = new Dictionary<string, Value>()
+                {
+                    ["Price"] = model.OrderDigest.Price.GetQuantityString(),
+                    ["AvatarAddress"] = States.Instance.CurrentAvatarState.address.ToString(),
+                    ["AgentAddress"] = States.Instance.CurrentAvatarState.agentAddress.ToString(),
+                };
+                Analyzer.Instance.Track("Unity/Buy", props);
+
+                var count = model.OrderDigest.ItemCount;
+                model.Selected.Value = false;
+                ReactiveShopState.RemoveBuyDigest(model.OrderDigest.OrderId);
+
+                string message;
+                if (count > 1)
+                {
+                    message = string.Format(L10nManager.Localize("NOTIFICATION_MULTIPLE_BUY_START"),
+                        model.ItemBase.GetLocalizedName(), count);
+                }
+                else
+                {
+                    message = string.Format(L10nManager.Localize("NOTIFICATION_BUY_START"),
+                        model.ItemBase.GetLocalizedName());
+                }
+
+                OneLineSystem.Push(MailType.Auction, message,
+                    NotificationCell.NotificationType.Information);
+            }
+
+            view.ClearSelectedItems();
+            AudioController.instance.PlaySfx(AudioController.SfxCode.BuyItem);
+        }
+
+        private static async Task<PurchaseInfo> GetPurchaseInfo(System.Guid orderId)
+        {
+            var order = await Util.GetOrder(orderId);
+            return new PurchaseInfo(orderId, order.TradableId, order.SellerAgentAddress,
+                order.SellerAvatarAddress, order.ItemSubType, order.Price);
+        }
+    }
+}

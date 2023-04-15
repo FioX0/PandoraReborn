@@ -1,0 +1,12 @@
+addReviewers: true
+addAssignees: author
+
+reviewers:
+  - boscohyun
+  - Unengine
+  - hskim881028
+  - sonohoshi
+  - tyrosine1153
+  - ipdae
+
+numberOfReviewers: 0

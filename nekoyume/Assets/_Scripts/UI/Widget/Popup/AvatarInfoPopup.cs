@@ -1,0 +1,277 @@
+using System.Collections.Generic;
+using Nekoyume.Game.Controller;
+using Nekoyume.Model.EnumType;
+using Nekoyume.State;
+using Nekoyume.UI.Module;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+using Toggle = Nekoyume.UI.Module.Toggle;
+using ToggleGroup = Nekoyume.UI.Module.ToggleGroup;
+
+namespace Nekoyume.UI
+{
+    using Nekoyume.PandoraBox;
+    using UniRx;
+
+    public class AvatarInfoPopup : XTweenPopupWidget
+    {
+        private const string NicknameTextFormat = "<color=#B38271>Lv.{0}</color=> {1}";
+
+        //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+        [Header("PANDORA CUSTOM FIELDS")] public TextMeshProUGUI PriceText;
+        [SerializeField] private GameObject premiumVFX;
+        [SerializeField] private GameObject GuildObj;
+        [SerializeField] private TextMeshProUGUI GuildText;
+        [SerializeField] private Image GuildImage;
+        [SerializeField] private Button guildButton;
+
+        [Space(50)]
+        //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+        [SerializeField]
+        private AvatarInformation information;
+
+        [SerializeField] private TextMeshProUGUI nicknameText;
+
+        [SerializeField] private CategoryTabButton adventureButton;
+
+        [SerializeField] private CategoryTabButton arenaButton;
+
+        [SerializeField] private CategoryTabButton raidButton;
+
+        [SerializeField] private Button closeButton;
+
+        [SerializeField] private Toggle grindModeToggle;
+
+        [SerializeField] private GrindModule grindModule;
+
+        [SerializeField] private GameObject grindModePanel;
+
+        [SerializeField] private GameObject statusObject;
+
+        [SerializeField] private GameObject equipmentSlotObject;
+
+        private BattlePreparation _battlePreparation;
+        private ArenaBattlePreparation _arenaPreparation;
+        private RaidPreparation _raidPreparation;
+        private Grind _grind;
+        private readonly ToggleGroup _toggleGroup = new();
+
+        private readonly Dictionary<BattleType, System.Action> _onToggleCallback = new()
+        {
+            { BattleType.Adventure, null },
+            { BattleType.Arena, null },
+            { BattleType.Raid, null },
+        };
+
+        //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+        public void EnableMarketHelper(TextMeshProUGUI text)
+        {
+            PandoraBox.PandoraMaster.MarketPriceHelper = !PandoraBox.PandoraMaster.MarketPriceHelper;
+            text.text = PandoraBox.PandoraMaster.MarketPriceHelper ? "Disable" : "Enable";
+        }
+
+        //public void ShowGuild()
+        //{
+        //    if (PandoraMaster.CurrentGuildPlayer is null)
+        //        return;
+        //    Find<GuildInfo>().Show(PandoraMaster.CurrentGuildPlayer.Guild);
+        //}
+        //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+
+        protected override void Awake()
+        {
+            _toggleGroup.RegisterToggleable(adventureButton);
+            _toggleGroup.RegisterToggleable(arenaButton);
+            _toggleGroup.RegisterToggleable(raidButton);
+
+            adventureButton.OnClick
+                .Subscribe(b => { OnClickPresetTab(b, BattleType.Adventure, _onToggleCallback[BattleType.Adventure]); })
+                .AddTo(gameObject);
+            arenaButton.OnClick
+                .Subscribe(b => { OnClickPresetTab(b, BattleType.Arena, _onToggleCallback[BattleType.Arena]); })
+                .AddTo(gameObject);
+            raidButton.OnClick
+                .Subscribe(b => { OnClickPresetTab(b, BattleType.Raid, _onToggleCallback[BattleType.Raid]); })
+                .AddTo(gameObject);
+
+            closeButton.onClick.AddListener(() =>
+            {
+                Close();
+                AudioController.PlayClick();
+            });
+
+            ////|||||||||||||| PANDORA START CODE |||||||||||||||||||
+            //guildButton.onClick.AddListener(() => { ShowGuild(); });
+            ////|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+
+            base.Awake();
+        }
+
+        public override void Initialize()
+        {
+            base.Initialize();
+            _battlePreparation = Find<BattlePreparation>();
+            _arenaPreparation = Find<ArenaBattlePreparation>();
+            _raidPreparation = Find<RaidPreparation>();
+            _grind = Find<Grind>();
+
+            information.Initialize(true, UpdateNotification);
+
+            grindModeToggle.onValueChanged.AddListener(toggledOn =>
+            {
+                grindModePanel.SetActive(toggledOn);
+                statusObject.SetActive(!toggledOn);
+                equipmentSlotObject.SetActive(!toggledOn);
+                if (toggledOn)
+                {
+                    grindModule.Show();
+                }
+                else
+                {
+                    grindModule.gameObject.SetActive(false);
+                    information.UpdateInventory(BattleType.Adventure);
+                }
+            });
+        }
+
+        public override void Show(bool ignoreShowAnimation = false)
+        {
+            base.Show(ignoreShowAnimation);
+            grindModeToggle.isOn = false;
+            information.UpdateInventory(BattleType.Adventure);
+            OnClickPresetTab(adventureButton, BattleType.Adventure, _onToggleCallback[BattleType.Adventure]);
+            HelpTooltip.HelpMe(100013, true);
+
+            //|||||||||||||| PANDORA START CODE |||||||||||||||||||
+            premiumVFX.SetActive(Premium.PandoraProfile.IsPremium());
+            GuildObj.SetActive(!(PandoraMaster.CurrentGuildPlayer is null));
+            if (!(PandoraMaster.CurrentGuildPlayer is null))
+            {
+                var selectedGuild =
+                    PandoraMaster.PanDatabase.Guilds.Find(x => x.Tag == PandoraMaster.CurrentGuildPlayer.Guild);
+                GuildImage.sprite = Resources.Load<Sprite>("UI/Textures/PandoraGuilds/" + selectedGuild.Tag);
+                GuildText.text =
+                    $"<color=#8488BC>[</color><color=green>{selectedGuild.Tag}</color><color=#8488BC>]</color> {selectedGuild.Name}";
+            }
+            //|||||||||||||| PANDORA  END  CODE |||||||||||||||||||
+        }
+
+        public override void Close(bool ignoreCloseAnimation = false)
+        {
+            base.Close(ignoreCloseAnimation);
+
+            if (_battlePreparation.isActiveAndEnabled)
+            {
+                _battlePreparation.UpdateInventory();
+            }
+
+            if (_arenaPreparation.isActiveAndEnabled)
+            {
+                _arenaPreparation.UpdateInventory();
+            }
+
+            if (_raidPreparation.isActiveAndEnabled)
+            {
+                _raidPreparation.UpdateInventory();
+            }
+
+            if (_grind.isActiveAndEnabled)
+            {
+                _grind.UpdateInventory();
+            }
+        }
+
+        private void OnClickPresetTab(
+            IToggleable toggle,
+            BattleType battleType,
+            System.Action onSetToggle = null)
+        {
+            var currentAvatarState = Game.Game.instance.States.CurrentAvatarState;
+            _toggleGroup.SetToggledOffAll();
+            toggle.SetToggledOn();
+            onSetToggle?.Invoke();
+
+            UpdateNickname(currentAvatarState.level, currentAvatarState.NameWithHash);
+            information.UpdateView(battleType);
+            AudioController.PlayClick();
+        }
+
+        private void UpdateNickname(int level, string nameWithHash)
+        {
+            nicknameText.text = string.Format(NicknameTextFormat, level, nameWithHash);
+        }
+
+        private void UpdateNotification()
+        {
+            adventureButton.HasNotification.Value = false;
+            arenaButton.HasNotification.Value = false;
+            raidButton.HasNotification.Value = false;
+
+            var adventure = States.Instance.CurrentItemSlotStates[BattleType.Adventure];
+            var arena = States.Instance.CurrentItemSlotStates[BattleType.Arena];
+            var raid = States.Instance.CurrentItemSlotStates[BattleType.Raid];
+            var bestEquipments = information.GetBestEquipments();
+            foreach (var guid in bestEquipments)
+            {
+                if (!adventure.Equipments.Exists(x => x == guid))
+                {
+                    adventureButton.HasNotification.Value = true;
+                }
+
+                if (!arena.Equipments.Exists(x => x == guid))
+                {
+                    arenaButton.HasNotification.Value = true;
+                }
+
+                if (!raid.Equipments.Exists(x => x == guid))
+                {
+                    raidButton.HasNotification.Value = true;
+                }
+            }
+
+            for (var i = 1; i < (int)BattleType.End; i++)
+            {
+                var battleType = (BattleType)i;
+                var inventoryItems = information.GetBestRunes(battleType);
+                foreach (var inventoryItem in inventoryItems)
+                {
+                    var slots = States.Instance.CurrentRuneSlotStates[battleType].GetRuneSlot();
+                    if (!slots.Exists(x => x.RuneId == inventoryItem.RuneState.RuneId))
+                    {
+                        switch (battleType)
+                        {
+                            case BattleType.Adventure:
+                                adventureButton.HasNotification.Value = true;
+                                break;
+                            case BattleType.Arena:
+                                arenaButton.HasNotification.Value = true;
+                                break;
+                            case BattleType.Raid:
+                                raidButton.HasNotification.Value = true;
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
+        #region For tutorial5
+
+        public void TutorialActionClickAvatarInfoFirstInventoryCellView()
+        {
+            if (information.TryGetFirstCell(out var item))
+            {
+                item.Selected.Value = true;
+            }
+            else
+            {
+                Debug.LogError($"TutorialActionClickAvatarInfoFirstInventoryCellView() throw error.");
+            }
+        }
+
+        public void TutorialActionCloseAvatarInfoWidget() => Close();
+
+        #endregion
+    }
+}
